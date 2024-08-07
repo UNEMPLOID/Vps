@@ -120,12 +120,12 @@ def process_callback_verify(call: telebot.types.CallbackQuery):
         # If user is verified
         keyboard = types.InlineKeyboardMarkup()
         keyboard.add(
-            types.InlineKeyboardButton("Free RDP", web_app=types.WebAppInfo(url="https://app.apponfly.com/trial"))
+            types.InlineKeyboardButton("Free Vps", web_app=types.WebAppInfo(url="https://terminator.aeza.net/en/"))
         )
         try:
             message = bot.send_message(
                 chat_id=user_id,
-                text="Thank you for using our service. Press the Free RDP button to use RDP.",
+                text="Thank you for using our service. Press the Free Vps button to use Vps.",
                 reply_markup=keyboard
             )
             log_action(user_id, user_name, 'verified')
@@ -133,9 +133,9 @@ def process_callback_verify(call: telebot.types.CallbackQuery):
             # Delete the mini app button after 10 seconds
             time.sleep(10)
             bot.delete_message(chat_id=user_id, message_id=message.message_id)
-            bot.send_message(chat_id=user_id, text="The Free RDP button has expired. Please start the bot again.")
+            bot.send_message(chat_id=user_id, text="The Free Vps button has expired. Please start the bot again.")
         except telebot.apihelper.ApiTelegramException as e:
-            logging.error(f"Failed to send Free RDP message to user {user_id}: {e}")
+            logging.error(f"Failed to send Free Vps message to user {user_id}: {e}")
     else:
         # If user is not verified
         try:
