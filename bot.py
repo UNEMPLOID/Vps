@@ -2,39 +2,49 @@ import telebot
 from telebot import types
 import logging
 import time
-from pymongo import MongoClient
-from threading import Timer
+import os
+from pymongo import MongoClient, errors
+from datetime import datetime
 
 # Enable logging
 logging.basicConfig(level=logging.INFO)
 
 # Bot token and log group ID
-TOKEN = '7464984710:AAH7Fv1eT63NLgb8eiwyqBRpTpfLkSY6Euc'
-LOG_GROUP_ID = -1002155266073
+TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '7464984710:AAH7Fv1eT63NLgb8eiwyqBRpTpfLkSY6Euc')
+LOG_GROUP_ID = int(os.getenv('LOG_GROUP_ID', '-1002155266073'))
 
 # Channels and group
 REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@Pbail_Squad"]
 REQUIRED_GROUP = "@indian_hacker_group"
-OWNER_ID = 5460343986  # Use the owner ID directly
+OWNER_ID = int(os.getenv('OWNER_ID', '5460343986'))  # Use the owner ID directly
 
 # Initialize bot
 bot = telebot.TeleBot(TOKEN)
 
-# Initialize MongoDB with a direct connection string
-MONGO_URI = "mongodb://sr6mv1ru66:AaxQBg50TtxVpX3P@cluster0-shard-00-00.t809eiz.mongodb.net:27017,cluster0-shard-00-01.t809eiz.mongodb.net:27017,cluster0-shard-00-02.t809eiz.mongodb.net:27017/?ssl=true&replicaSet=atlas-12u3ng-shard-0&authSource=admin&retryWrites=true&w=majority"
-client = MongoClient(MONGO_URI)
-db = client.bot_database
+# Initialize MongoDB database
+MONGODB_URI = os.getenv('MONGODB_URI', 'mongodb+srv://sr6mv1ru66:AaxQBg50TtxVpX3P@cluster0.t809eiz.mongodb.net/mydatabase?retryWrites=true&w=majority')
+
+try:
+    client = MongoClient(MONGODB_URI)
+    db = client.get_default_database()
+    logging.info("Connected to MongoDB using SRV connection string.")
+except errors.ConfigurationError:
+    # Fallback to standard connection string if SRV connection fails
+    MONGODB_URI = "mongodb://sr6mv1ru66:AaxQBg50TtxVpX3P@cluster0-shard-00-00.t809eiz.mongodb.net:27017,cluster0-shard-00-01.t809eiz.mongodb.net:27017,cluster0-shard-00-02.t809eiz.mongodb.net:27017/mydatabase?ssl=true&replicaSet=atlas-abcdef-shard-0&authSource=admin&retryWrites=true&w=majority"
+    client = MongoClient(MONGODB_URI)
+    db = client.get_default_database()
+    logging.info("Connected to MongoDB using standard connection string.")
+
 users_collection = db.users
 logs_collection = db.logs
 
 def log_action(user_id, username, action):
-    log_entry = {
+    logs_collection.insert_one({
         'user_id': user_id,
         'username': username,
         'action': action,
-        'timestamp': time.strftime('%Y-%m-%d %H:%M:%S')
-    }
-    logs_collection.insert_one(log_entry)
+        'timestamp': datetime.now()
+    })
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message: telebot.types.Message):
@@ -81,9 +91,10 @@ def send_welcome(message: telebot.types.Message):
 
     # Logging new user start
     try:
+        total_users_count = users_collection.count_documents({})
         bot.send_message(
             chat_id=LOG_GROUP_ID,
-            text=f"➕ New User Notification ➕\n\n👤 User: @{user_name}\n🆔 User ID: {user_id}\n🌝 Total Users Count: {users_collection.count_documents({})}"
+            text=f"➕ New User Notification ➕\n\n👤 User: @{user_name}\n🆔 User ID: {user_id}\n🌝 Total Users Count: {total_users_count}"
         )
     except telebot.apihelper.ApiTelegramException as e:
         logging.error(f"Failed to log new user start for user {user_id}: {e}")
@@ -112,16 +123,17 @@ def process_callback_verify(call: telebot.types.CallbackQuery):
             types.InlineKeyboardButton("Free RDP", web_app=types.WebAppInfo(url="https://app.apponfly.com/trial"))
         )
         try:
-            bot.send_message(
+            message = bot.send_message(
                 chat_id=user_id,
                 text="Thank you for using our service. Press the Free RDP button to use RDP.",
                 reply_markup=keyboard
             )
             log_action(user_id, user_name, 'verified')
-
-            # Schedule deletion of the mini app button after 10 seconds
-            Timer(10, delete_mini_app_button, [user_id]).start()
-
+            
+            # Delete the mini app button after 10 seconds
+            time.sleep(10)
+            bot.delete_message(chat_id=user_id, message_id=message.message_id)
+            bot.send_message(chat_id=user_id, text="The Free RDP button has expired. Please start the bot again.")
         except telebot.apihelper.ApiTelegramException as e:
             logging.error(f"Failed to send Free RDP message to user {user_id}: {e}")
     else:
@@ -133,12 +145,6 @@ def process_callback_verify(call: telebot.types.CallbackQuery):
             )
         except telebot.apihelper.ApiTelegramException as e:
             logging.error(f"Failed to send verification failure message to user {user_id}: {e}")
-
-def delete_mini_app_button(user_id):
-    try:
-        bot.send_message(user_id, "The Free RDP button has expired. Please start the bot again.")
-    except telebot.apihelper.ApiTelegramException as e:
-        logging.error(f"Failed to send expiration message to user {user_id}: {e}")
 
 @bot.callback_query_handler(func=lambda call: call.data == 'commands')
 def send_commands(call: telebot.types.CallbackQuery):
@@ -184,13 +190,11 @@ def stats(message: telebot.types.Message):
     except telebot.apihelper.ApiTelegramException as e:
         logging.error(f"Failed to send stats to user {message.from_user.id}: {e}")
 
-def main():
-    while True:
-        try:
-            bot.polling(none_stop=True)
-        except Exception as e:
-            logging.error(f"Bot polling failed: {e}")
-            time.sleep(10)  # Wait before restarting the polling loop
-
-if __name__ == "__main__":
-    main()
+# Start polling
+while True:
+    try:
+        logging.info("Bot polling started.")
+        bot.polling(none_stop=True)
+    except Exception as e:
+        logging.error(f"Bot polling failed: {e}")
+        time.sleep(15)
