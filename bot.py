@@ -69,7 +69,7 @@ def send_welcome(message: telebot.types.Message):
     )
     keyboard.add(
         types.InlineKeyboardButton("Indian Hacker Group", url="https://t.me/indian_hacker_group"),
-        types.InlineKeyboardButton("The Pro's", url="https://t.me/maharaja43")
+        types.InlineKeyboardButton("The Maharaja", url="https://t.me/maharaja43")
     )
     keyboard.add(
         types.InlineKeyboardButton("Verify", callback_data='verify')
