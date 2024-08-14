@@ -14,7 +14,7 @@ TOKEN = os.getenv('TELEGRAM_BOT_TOKEN', '7464984710:AAH7Fv1eT63NLgb8eiwyqBRpTpfL
 LOG_GROUP_ID = int(os.getenv('LOG_GROUP_ID', '-1002155266073'))
 
 # Channels and group
-REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@irarechannel"]
+REQUIRED_CHANNELS = ["@Found_Us", "@Falcon_security", "@maharaja43"]
 REQUIRED_GROUP = "@indian_hacker_group"
 OWNER_ID = int(os.getenv('OWNER_ID', '5460343986'))  # Use the owner ID directly
 
@@ -69,7 +69,7 @@ def send_welcome(message: telebot.types.Message):
     )
     keyboard.add(
         types.InlineKeyboardButton("Indian Hacker Group", url="https://t.me/indian_hacker_group"),
-        types.InlineKeyboardButton("The Pro's", url="https://t.me/irarechannel")
+        types.InlineKeyboardButton("The Pro's", url="https://t.me/maharaja43")
     )
     keyboard.add(
         types.InlineKeyboardButton("Verify", callback_data='verify')
